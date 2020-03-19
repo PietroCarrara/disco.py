@@ -62,7 +62,7 @@ def uploadImage(token, appID, filename, imageName):
 
 
 def deleteImage(token, appID, imgID):
-    requests.delete(
+    return requests.delete(
         'https://discordapp.com/api/v6/oauth2/applications/{}/assets/{}'.format(
             appID,
             imgID
@@ -92,10 +92,18 @@ def updateMusic():
 
     global prevData
 
-    # if prevData == None or prevData['artName'] != data['artName']:
-    print(uploadImage(token, appID, data['artPath'], data['artName']))
+    if prevData == None or prevData['artName'] != data['artName']:
+        if prevData != None:
+            deleteImage(token, appID, data['artID'])
+        data['artID'] = uploadImage(token, appID, data['artPath'], data['artName'])
+    
+    if prevData != None and data['artID'] == 0:
+        data['artID'] = prevData['artID']
 
     print(data['artName'])
+    print(data['artID'])
+    print()
+
     presence.update(
         large_image=data['artName'],
         state=data['artist'],
@@ -120,14 +128,18 @@ if not token:
 
 appID = os.getenv('appid')
 
-presence = Presence(appID)
-presence.connect()
+# Check if is running in interactive mode
+if not sys.flags.interactive:
+    presence = Presence(appID)
+    presence.connect()
 
-player = Playerctl.Player()
-player.connect('metadata', lambda p, m: updateMusic())
+    player = Playerctl.Player()
+    player.connect('metadata', lambda p, m: updateMusic())
 
-updateMusic()
+    updateMusic()
 
-# wait for events
-main = GLib.MainLoop()
-main.run()
+    # wait for events
+    main = GLib.MainLoop()
+    main.run()
+
+    presence.close()
