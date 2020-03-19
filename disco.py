@@ -44,9 +44,10 @@ def imgStr(filename):
 def uploadImage(token, appID, filename, imageName):
     img = imgStr(filename)
 
-    requests.post(
+    r = requests.post(
         'https://discordapp.com/api/v6/oauth2/applications/{}/assets'.format(
-            appID),
+            appID
+        ),
         json={
             'name': imageName,
             'type': '1',
@@ -57,30 +58,52 @@ def uploadImage(token, appID, filename, imageName):
         }
     )
 
+    return r.json()['id']
+
+
+def deleteImage(token, appID, imgID):
+    requests.delete(
+        'https://discordapp.com/api/v6/oauth2/applications/{}/assets/{}'.format(
+            appID,
+            imgID
+        ),
+        headers={
+            'Authorization': token,
+        }
+    )
+
+
+# The data of the previous playing song
+prevData = None
+
 
 def updateMusic():
     metadata = player.props.metadata
     playing = player.props.playback_status == Playerctl.PlaybackStatus.PLAYING
 
-    title = metadata['xesam:title']
-    artist = ', '.join(metadata['xesam:artist'])
-    album = metadata['xesam:album']
+    data = {
+        'title': metadata['xesam:title'],
+        'artist': ', '.join(metadata['xesam:artist']),
+        'album': metadata['xesam:album'],
+        'artPath': metadata['mpris:artUrl'].replace('file://', '', 1),
+        'artName': md5(metadata['xesam:album'].encode()).hexdigest(),
+        'artID': 0
+    }
 
-    artPath = metadata['mpris:artUrl'].replace('file://', '', 1)
-    artName = md5(album.encode()).hexdigest()
+    global prevData
 
-    print('{} - {} ({})\n\n'.format(artist, title, album))
+    # if prevData == None or prevData['artName'] != data['artName']:
+    print(uploadImage(token, appID, data['artPath'], data['artName']))
 
-    uploadImage(token, appID, artPath, artName)
-
+    print(data['artName'])
     presence.update(
-        large_image=artName,
-        state=artist,
-        large_text=album,
-        details=title,
+        large_image=data['artName'],
+        state=data['artist'],
+        large_text=data['album'],
+        details=data['title'],
     )
 
-    print(metadata)
+    prevData = data
 
 
 # Initialize config
